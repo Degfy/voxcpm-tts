@@ -110,8 +110,8 @@ def generate(
     text: str,
     voice_id: str = None,
     control: str = None,
-    cfg_value: float = 1.0,
-    inference_timesteps: int = 20,
+    cfg_value: float = 2.0,
+    inference_timesteps: int = 10,
 ) -> BytesIO:
     model = get_model()
 
@@ -135,11 +135,18 @@ def generate(
                 inference_timesteps=inference_timesteps,
             )
     else:
-        wav = model.generate(
-            text=control + text if control else text,
-            cfg_value=cfg_value,
-            inference_timesteps=inference_timesteps,
-        )
+        if control:
+            wav = model.generate(
+                text=f"({control}){text}",
+                cfg_value=cfg_value,
+                inference_timesteps=inference_timesteps,
+            )
+        else:
+            wav = model.generate(
+                text=control + text if control else text,
+                cfg_value=cfg_value,
+                inference_timesteps=inference_timesteps,
+            )
 
     file = BytesIO()
     sf.write(file, wav, model.tts_model.sample_rate, format="WAV")

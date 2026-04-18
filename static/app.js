@@ -1,5 +1,7 @@
 let voices = [];
 let synthesizedAudio = null;
+let synthesisHistory = [];
+let currentSynthesisData = null;
 
 async function loadVoices() {
     try {
@@ -192,9 +194,19 @@ document.getElementById('synthesize-form').addEventListener('submit', async func
         const audioPlayer = document.getElementById('audio-player');
         audioPlayer.src = audioUrl;
 
+        currentSynthesisData = {
+            text: data.text,
+            audioBlob: blob,
+            audioUrl: audioUrl,
+            voice_id: data.voice_id,
+            control: data.control,
+            createdAt: new Date().toISOString()
+        };
+
         document.getElementById('result-section').style.display = 'block';
         showToast('合成成功', 'success');
 
+        addToSynthesisHistory(currentSynthesisData);
         audioPlayer.play().catch(() => {});
     } catch (error) {
         showToast(error.message, 'error');
@@ -219,6 +231,146 @@ function downloadAudio() {
     link.href = URL.createObjectURL(synthesizedAudio);
     link.download = 'synthesized.wav';
     link.click();
+}
+
+function addToSynthesisHistory(data) {
+    synthesisHistory.unshift(data);
+    if (synthesisHistory.length > 10) {
+        synthesisHistory.pop();
+    }
+    renderSynthesisHistory();
+}
+
+function renderSynthesisHistory() {
+    const container = document.getElementById('synthesis-history-list');
+
+    if (synthesisHistory.length === 0) {
+        container.innerHTML = '<div class="empty-state">暂无合成历史</div>';
+        return;
+    }
+
+    container.innerHTML = synthesisHistory.map((item, index) => `
+        <div class="history-item">
+            <div class="history-item-header">
+                <span class="history-item-text">${escapeHtml(item.text)}</span>
+                <span class="history-item-time">${formatTime(item.createdAt)}</span>
+            </div>
+            <div class="history-item-content">
+                <audio controls src="${item.audioUrl}"></audio>
+                <div class="history-item-actions">
+                    <button class="btn btn-secondary btn-small" onclick="useSynthesisText('${escapeHtml(item.text)}')">使用文本</button>
+                    <button class="btn btn-primary btn-small" onclick="showAddFromHistoryModal(${index})">添加到音色</button>
+                    <button class="btn btn-secondary btn-small" onclick="downloadSynthesis(${index})">下载</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function formatTime(isoString) {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function useSynthesisText(text) {
+    document.getElementById('text').value = text;
+    document.getElementById('synthesize-panel').scrollIntoView({ behavior: 'smooth' });
+}
+
+function downloadSynthesis(index) {
+    const item = synthesisHistory[index];
+    if (!item) return;
+
+    const link = document.createElement('a');
+    link.href = item.audioUrl;
+    link.download = `synthesized_${Date.now()}.wav`;
+    link.click();
+}
+
+let currentHistoryIndex = null;
+
+function showAddFromHistoryModal(index) {
+    currentHistoryIndex = index;
+    const item = synthesisHistory[index];
+    if (!item) return;
+
+    document.getElementById('synthesis-voice-name').value = '';
+    document.getElementById('synthesis-text-preview').textContent = item.text;
+    document.getElementById('synthesis-modal-overlay').style.display = 'flex';
+}
+
+function showAddFromSynthesisModal() {
+    if (!currentSynthesisData) return;
+    currentHistoryIndex = -1;
+
+    document.getElementById('synthesis-voice-name').value = '';
+    document.getElementById('synthesis-text-preview').textContent = currentSynthesisData.text;
+    document.getElementById('synthesis-modal-overlay').style.display = 'flex';
+}
+
+function hideSynthesisModal() {
+    document.getElementById('synthesis-modal-overlay').style.display = 'none';
+    currentHistoryIndex = null;
+}
+
+document.getElementById('synthesis-modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) hideSynthesisModal();
+});
+
+document.getElementById('add-from-synthesis-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    let item;
+    if (currentHistoryIndex === -1 && currentSynthesisData) {
+        item = currentSynthesisData;
+    } else {
+        item = synthesisHistory[currentHistoryIndex];
+    }
+
+    if (!item) {
+        showToast('未找到合成音频', 'error');
+        return;
+    }
+
+    const name = document.getElementById('synthesis-voice-name').value.trim();
+    if (!name) {
+        showToast('请输入音色名称', 'error');
+        return;
+    }
+
+    try {
+        const data = {
+            name: name,
+            text: item.text,
+            voice: await blobToDataUri(item.audioBlob)
+        };
+
+        const response = await fetch('/api/v1/voices', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || '添加音色失败');
+        }
+
+        showToast('音色添加成功', 'success');
+        hideSynthesisModal();
+        loadVoices();
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+});
+
+async function blobToDataUri(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
 }
 
 function showToast(message, type = 'info') {
