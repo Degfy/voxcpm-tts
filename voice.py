@@ -108,27 +108,35 @@ def parse_data_uri(data_uri: str) -> tuple[str, bytes]:
 
 def generate(
     text: str,
-    voice_id: str,
+    voice_id: str = None,
     control: str = None,
     cfg_value: float = 1.0,
     inference_timesteps: int = 20,
 ) -> BytesIO:
     model = get_model()
-    voice = get_ref_audio(voice_id)
 
-    if control:
-        wav = model.generate(
-            text=f"({control}){text}",
-            reference_wav_path=voice.voice_path,
-            cfg_value=cfg_value,
-            inference_timesteps=inference_timesteps,
-        )
+    if voice_id:
+        voice = get_ref_audio(voice_id)
+
+        if control:
+            wav = model.generate(
+                text=f"({control}){text}",
+                reference_wav_path=voice.voice_path,
+                cfg_value=cfg_value,
+                inference_timesteps=inference_timesteps,
+            )
+        else:
+            wav = model.generate(
+                text=text,
+                reference_wav_path=voice.voice_path,
+                prompt_wav_path=voice.voice_path,
+                prompt_text=voice.text,
+                cfg_value=cfg_value,
+                inference_timesteps=inference_timesteps,
+            )
     else:
         wav = model.generate(
-            text=text,
-            reference_wav_path=voice.voice_path,
-            prompt_wav_path=voice.voice_path,
-            prompt_text=voice.text,
+            text=control + text if control else text,
             cfg_value=cfg_value,
             inference_timesteps=inference_timesteps,
         )

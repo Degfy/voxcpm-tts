@@ -2,9 +2,10 @@ import uuid
 import json
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from pathlib import Path
 
 from voice import (
     Voice,
@@ -22,6 +23,14 @@ app = FastAPI(title="Chinese TTS Service", version="1.0.0")
 
 voices_dir = get_voices_dir()
 app.mount("/voices", StaticFiles(directory=str(voices_dir)), name="voices")
+
+static_dir = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+
+@app.get("/")
+def serve_index():
+    return FileResponse(str(static_dir / "index.html"))
 
 
 class VoiceCreateRequest(BaseModel):
@@ -110,10 +119,10 @@ def synthesize_speech(request: SynthesizeRequest):
             inference_timesteps=request.inference_timesteps,
         )
 
-        return FileResponse(
-            path=audio_file.name if hasattr(audio_file, "name") else None,
+        return StreamingResponse(
+            audio_file,
             media_type="audio/wav",
-            filename="synthesized.wav",
+            headers={"Content-Disposition": "attachment; filename=synthesized.wav"},
         )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
