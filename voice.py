@@ -1,5 +1,6 @@
 import json
 import base64
+import logging
 import threading
 from io import BytesIO
 from pathlib import Path
@@ -10,6 +11,8 @@ from voxcpm import VoxCPM
 import soundfile as sf
 
 from config import config
+
+logger = logging.getLogger(__name__)
 
 
 _model = None
@@ -45,7 +48,7 @@ def _queue_worker():
         try:
             task()
         except Exception:
-            pass
+            logger.exception("Queue worker task failed")
         finally:
             event.set()
             _generate_queue.task_done()
@@ -158,11 +161,15 @@ def generate(
     try:
         queue.put((do_generate, event), block=True, timeout=30)
     except Empty:
+        logger.warning("Queue is full, rejecting request")
         raise RuntimeError("Queue is full, please try again later")
 
+    logger.info(f"Synthesize queued: voice_id={voice_id!r}, control={control!r}, text={text[:50]!r}...")
     event.wait()
     if exception_holder[0]:
+        logger.error(f"Synthesize failed: {exception_holder[0]}")
         raise exception_holder[0]
+    logger.info(f"Synthesize completed: voice_id={voice_id!r}")
     return result_holder[0]
 
 
@@ -174,10 +181,13 @@ def _do_generate(
     inference_timesteps: int = 10,
 ) -> BytesIO:
     model = get_model()
+    text = text.strip()
+    control = control.strip() if control else None
+
+    logger.info(f"Generating: voice_id={voice_id}, control={control}, text_len={len(text)}")
 
     if voice_id:
         voice = get_ref_audio(voice_id)
-
         if control:
             wav = model.generate(
                 text=f"({control}){text}",
@@ -194,19 +204,18 @@ def _do_generate(
                 cfg_value=cfg_value,
                 inference_timesteps=inference_timesteps,
             )
+    elif control:
+        wav = model.generate(
+            text=f"({control}){text}",
+            cfg_value=cfg_value,
+            inference_timesteps=inference_timesteps,
+        )
     else:
-        if control:
-            wav = model.generate(
-                text=f"({control}){text}",
-                cfg_value=cfg_value,
-                inference_timesteps=inference_timesteps,
-            )
-        else:
-            wav = model.generate(
-                text=control + text if control else text,
-                cfg_value=cfg_value,
-                inference_timesteps=inference_timesteps,
-            )
+        wav = model.generate(
+            text=text,
+            cfg_value=cfg_value,
+            inference_timesteps=inference_timesteps,
+        )
 
     file = BytesIO()
     sf.write(file, wav, model.tts_model.sample_rate, format="WAV")
