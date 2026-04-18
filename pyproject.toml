@@ -1,7 +1,22 @@
 [project]
 name = "tts"
 version = "0.1.0"
-description = "Add your description here"
+description = "Chinese TTS service based on VoxCPM2"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "voxcpm>=2.0.2",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "python-dotenv>=1.0.0",
+    "soundfile>=0.12.0",
+    "pydantic>=2.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["voice", "config", "main"]
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple/"
+default = true
