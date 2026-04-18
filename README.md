@@ -160,6 +160,8 @@ MODEL_PATH=pretrained_models/VoxCPM2
 VOICES_DIR=voices
 BASE_URL=http://localhost:8000
 QUEUE_SIZE=10
+HOST=0.0.0.0
+PORT=8000
 ```
 
 ## 音色存储
