@@ -1,8 +1,10 @@
 import json
 import base64
+import threading
 from io import BytesIO
 from pathlib import Path
 from dataclasses import dataclass
+from queue import Queue, Empty
 
 from voxcpm import VoxCPM
 import soundfile as sf
@@ -11,6 +13,9 @@ from config import config
 
 
 _model = None
+_generate_queue = None
+_worker_thread = None
+_worker_started = False
 
 
 def get_model():
@@ -18,6 +23,32 @@ def get_model():
     if _model is None:
         _model = VoxCPM.from_pretrained(config.model_path, load_denoiser=True)
     return _model
+
+
+def get_generate_queue() -> Queue:
+    global _generate_queue, _worker_thread, _worker_started
+    if _generate_queue is None:
+        _generate_queue = Queue(maxsize=config.queue_size)
+    if not _worker_started:
+        _worker_started = True
+        _worker_thread = threading.Thread(target=_queue_worker, daemon=True)
+        _worker_thread.start()
+    return _generate_queue
+
+
+def _queue_worker():
+    while True:
+        item = _generate_queue.get()
+        if item is None:
+            break
+        task, event = item
+        try:
+            task()
+        except Exception:
+            pass
+        finally:
+            event.set()
+            _generate_queue.task_done()
 
 
 def get_voices_dir() -> Path:
@@ -107,6 +138,35 @@ def parse_data_uri(data_uri: str) -> tuple[str, bytes]:
 
 
 def generate(
+    text: str,
+    voice_id: str = None,
+    control: str = None,
+    cfg_value: float = 2.0,
+    inference_timesteps: int = 10,
+) -> BytesIO:
+    queue = get_generate_queue()
+    result_holder = [None]
+    exception_holder = [None]
+    event = threading.Event()
+
+    def do_generate():
+        try:
+            result_holder[0] = _do_generate(text, voice_id, control, cfg_value, inference_timesteps)
+        except Exception as e:
+            exception_holder[0] = e
+
+    try:
+        queue.put((do_generate, event), block=True, timeout=30)
+    except Empty:
+        raise RuntimeError("Queue is full, please try again later")
+
+    event.wait()
+    if exception_holder[0]:
+        raise exception_holder[0]
+    return result_holder[0]
+
+
+def _do_generate(
     text: str,
     voice_id: str = None,
     control: str = None,

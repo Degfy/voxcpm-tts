@@ -415,6 +415,7 @@ main {
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: var(--shadow-lg);
+    padding: 20px;
 }
 
 .modal-header {

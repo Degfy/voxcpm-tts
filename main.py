@@ -126,6 +126,8 @@ def synthesize_speech(request: SynthesizeRequest):
         )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 
 @app.get("/health")
