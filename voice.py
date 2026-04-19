@@ -24,7 +24,7 @@ _worker_started = False
 def get_model():
     global _model
     if _model is None:
-        _model = VoxCPM.from_pretrained(config.model_path, load_denoiser=False)
+        _model = VoxCPM.from_pretrained(config.model_path, load_denoiser=config.load_denoiser)
     return _model
 
 

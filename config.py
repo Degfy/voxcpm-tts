@@ -12,6 +12,7 @@ class Config:
     queue_size: int = int(os.getenv("QUEUE_SIZE", "10"))
     host: str = os.getenv("HOST", "0.0.0.0")
     port: int = int(os.getenv("PORT", "8000"))
+    load_denoiser: bool = os.getenv("LOAD_DENOISER", "false").lower() == "true"
 
 
 config = Config()
