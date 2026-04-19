@@ -26,6 +26,9 @@ function renderVoices() {
     container.innerHTML = voices.map(voice => `
         <div class="voice-card">
             <h4>${escapeHtml(voice.name)}</h4>
+            <div class="voice-id" onclick="copyVoiceId('${voice.id}')" title="点击复制音色ID">
+                ID: ${escapeHtml(voice.id)} <span class="copy-icon">📋</span>
+            </div>
             <audio controls src="${voice.voice_url}"></audio>
             <p class="voice-text" title="${escapeHtml(voice.text)}">${escapeHtml(voice.text)}</p>
             <div class="voice-actions">
@@ -45,6 +48,21 @@ function updateVoiceSelect() {
 function useVoice(voiceId) {
     document.getElementById('voice-select').value = voiceId;
     document.getElementById('synthesize-panel').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function copyVoiceId(voiceId) {
+    try {
+        await navigator.clipboard.writeText(voiceId);
+        showToast('音色ID已复制', 'success');
+    } catch (err) {
+        const textarea = document.createElement('textarea');
+        textarea.value = voiceId;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('音色ID已复制', 'success');
+    }
 }
 
 function showAddVoiceModal() {

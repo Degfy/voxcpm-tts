@@ -175,6 +175,28 @@ main {
     color: var(--text);
 }
 
+.voice-card .voice-id {
+    font-size: 0.7rem;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.4rem;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.voice-card .voice-id:hover {
+    background: var(--border);
+}
+
+.voice-card .voice-id .copy-icon {
+    font-size: 0.65rem;
+}
+
 .voice-card audio {
     width: 100%;
     height: 32px;
