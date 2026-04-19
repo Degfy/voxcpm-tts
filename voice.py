@@ -1,3 +1,4 @@
+import gc
 import json
 import base64
 import logging
@@ -55,10 +56,20 @@ def unload_model():
         if hasattr(_model, 'to'):
             _model.to('cpu')
         # Clear any cached tensors inside the model
-        if hasattr(_model, 'tts_model') and hasattr(_model.tts_model, 'cache'):
-            _model.tts_model.cache = {}
+        if hasattr(_model, 'tts_model'):
+            if hasattr(_model.tts_model, 'cache'):
+                _model.tts_model.cache = {}
+            # Break potential circular references in model components
+            for attr in ['model', 'encoder', 'decoder', 'denoiser']:
+                if hasattr(_model.tts_model, attr):
+                    obj = getattr(_model.tts_model, attr)
+                    if hasattr(obj, 'parameters'):
+                        for p in list(obj.parameters()):
+                            p.data = torch.empty(0)
+        # Delete model and force garbage collection
         del _model
         _model = None
+        gc.collect()
         _model_loaded = False
         if torch.cuda.is_available():
             torch.cuda.synchronize()
