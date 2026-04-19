@@ -24,7 +24,7 @@ _worker_started = False
 def get_model():
     global _model
     if _model is None:
-        _model = VoxCPM.from_pretrained(config.model_path, load_denoiser=True)
+        _model = VoxCPM.from_pretrained(config.model_path, load_denoiser=False)
     return _model
 
 
@@ -184,7 +184,7 @@ def _do_generate(
     text = text.strip()
     control = control.strip() if control else None
 
-    logger.info(f"Generating: voice_id={voice_id}, control={control}, text_len={len(text)}")
+    print(f"Generating: voice_id={voice_id}, control={control}, text_len={len(text)}")
 
     if voice_id:
         voice = get_ref_audio(voice_id)
