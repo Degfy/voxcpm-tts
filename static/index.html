@@ -11,8 +11,17 @@
 <body>
     <div class="container">
         <header>
-            <h1>中文TTS服务</h1>
-            <p class="subtitle">基于VoxCPM2的多语言语音合成系统</p>
+            <div class="header-row">
+                <div>
+                    <h1>中文TTS服务</h1>
+                    <p class="subtitle">基于VoxCPM2的多语言语音合成系统</p>
+                </div>
+                <div class="model-status" id="model-status">
+                    <span class="status-indicator" id="status-indicator"></span>
+                    <span id="status-text">加载中...</span>
+                    <button class="btn btn-secondary btn-small" id="unload-btn" onclick="unloadModel()" style="display:none;">卸载模型</button>
+                </div>
+            </div>
         </header>
 
         <main>

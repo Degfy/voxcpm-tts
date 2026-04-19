@@ -35,6 +35,8 @@ uv run main.py
 | POST | `/api/v1/voices` | 添加音色 |
 | DELETE | `/api/v1/voices/:id` | 删除音色 |
 | POST | `/api/v1/synthesize` | 合成语音 |
+| GET | `/api/v1/model/status` | 获取模型状态 |
+| POST | `/api/v1/model/unload` | 卸载模型释放内存 |
 | GET | `/health` | 健康检查 |
 
 ### GET /api/v1/voices
@@ -141,6 +143,51 @@ curl -X POST http://localhost:8000/api/v1/synthesize \
   -o synthesized.wav
 ```
 
+### GET /api/v1/model/status
+
+获取模型加载状态和任务队列信息。
+
+**响应字段说明：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `loaded` | bool | 模型是否已加载到内存 |
+| `busy` | bool | 是否有任务正在执行 |
+| `queue_size` | int | 队列中待处理的任务数量 |
+
+**响应：**
+```json
+{
+  "loaded": true,
+  "busy": false,
+  "queue_size": 0
+}
+```
+
+### POST /api/v1/model/unload
+
+卸载模型释放内存。模型忙碌时（正在合成）无法卸载。
+
+**响应字段说明：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `unloaded` | bool | 是否成功卸载 |
+
+**响应：**
+```json
+{
+  "unloaded": true
+}
+```
+
+**错误响应（409 冲突）：**
+```json
+{
+  "detail": "Worker is busy, cannot unload model"
+}
+```
+
 ### GET /health
 
 健康检查接口，用于验证服务是否正常运行。
@@ -163,7 +210,20 @@ BASE_URL=http://localhost:8000
 QUEUE_SIZE=10
 HOST=0.0.0.0
 PORT=8000
+LOAD_DENOISER=true
 ```
+
+**配置项说明：**
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `MODEL_PATH` | pretrained_models/VoxCPM2 | 模型文件路径 |
+| `VOICES_DIR` | voices | 音色存储目录 |
+| `BASE_URL` | http://localhost:8000 | 服务基础URL |
+| `QUEUE_SIZE` | 10 | 合成任务队列大小 |
+| `HOST` | 0.0.0.0 | 服务监听地址 |
+| `PORT` | 8000 | 服务监听端口 |
+| `LOAD_DENOISER` | true | 是否加载语音降噪器 |
 
 ## 下载模型
 

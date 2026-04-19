@@ -15,6 +15,10 @@ from voice import (
     parse_data_uri,
     generate,
     get_voices_dir,
+    is_model_loaded,
+    is_worker_busy,
+    get_queue_size,
+    unload_model,
 )
 from config import config
 
@@ -128,6 +132,26 @@ def synthesize_speech(request: SynthesizeRequest):
         raise HTTPException(status_code=404, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.get("/api/v1/model/status")
+def model_status():
+    return {
+        "loaded": is_model_loaded(),
+        "busy": is_worker_busy(),
+        "queue_size": get_queue_size(),
+    }
+
+
+@app.post("/api/v1/model/unload")
+def model_unload():
+    if is_worker_busy():
+        raise HTTPException(status_code=409, detail="Worker is busy, cannot unload model")
+    queue_size = get_queue_size()
+    if queue_size > 0:
+        raise HTTPException(status_code=409, detail=f"Queue has {queue_size} pending tasks")
+    unloaded = unload_model()
+    return {"unloaded": unloaded}
 
 
 @app.get("/health")

@@ -38,8 +38,23 @@ body {
 }
 
 header {
-    text-align: center;
     margin-bottom: 2rem;
+}
+
+header h1 {
+    text-align: left;
+}
+
+header .subtitle {
+    text-align: left;
+}
+
+.header-row > div:first-child {
+    text-align: left;
+}
+
+.header-row > div:last-child {
+    text-align: right;
 }
 
 header h1 {
@@ -52,6 +67,47 @@ header h1 {
 .subtitle {
     color: var(--text-light);
     font-size: 1rem;
+}
+
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.model-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--secondary);
+}
+
+.status-indicator.loaded {
+    background: var(--success);
+}
+
+.status-indicator.unloaded {
+    background: var(--text-light);
+}
+
+.status-indicator.busy {
+    background: var(--danger);
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 main {

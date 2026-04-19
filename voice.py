@@ -2,6 +2,7 @@ import json
 import base64
 import logging
 import threading
+import torch
 from io import BytesIO
 from pathlib import Path
 from dataclasses import dataclass
@@ -16,16 +17,47 @@ logger = logging.getLogger(__name__)
 
 
 _model = None
+_model_loaded = False
 _generate_queue = None
 _worker_thread = None
 _worker_started = False
+_worker_busy = False
+_state_lock = threading.Lock()
 
 
 def get_model():
-    global _model
+    global _model, _model_loaded
     if _model is None:
         _model = VoxCPM.from_pretrained(config.model_path, load_denoiser=config.load_denoiser)
+        _model_loaded = True
     return _model
+
+
+def is_model_loaded() -> bool:
+    return _model_loaded and _model is not None
+
+
+def is_worker_busy() -> bool:
+    with _state_lock:
+        return _worker_busy
+
+
+def get_queue_size() -> int:
+    if _generate_queue is None:
+        return 0
+    return _generate_queue.qsize()
+
+
+def unload_model():
+    global _model, _model_loaded
+    if _model is not None:
+        del _model
+        _model = None
+        _model_loaded = False
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        logger.info("Model unloaded from memory")
+    return not _model_loaded
 
 
 def get_generate_queue() -> Queue:
@@ -40,16 +72,21 @@ def get_generate_queue() -> Queue:
 
 
 def _queue_worker():
+    global _worker_busy
     while True:
         item = _generate_queue.get()
         if item is None:
             break
         task, event = item
+        with _state_lock:
+            _worker_busy = True
         try:
             task()
         except Exception:
             logger.exception("Queue worker task failed")
         finally:
+            with _state_lock:
+                _worker_busy = False
             event.set()
             _generate_queue.task_done()
 

@@ -3,6 +3,50 @@ let synthesizedAudio = null;
 let synthesisHistory = [];
 let currentSynthesisData = null;
 
+async function loadModelStatus() {
+    try {
+        const response = await fetch('/api/v1/model/status');
+        if (!response.ok) throw new Error('获取模型状态失败');
+        const data = await response.json();
+        updateModelStatusUI(data);
+    } catch (error) {
+        document.getElementById('status-text').textContent = '状态未知';
+        document.getElementById('status-indicator').className = 'status-indicator unknown';
+    }
+}
+
+function updateModelStatusUI(data) {
+    const indicator = document.getElementById('status-indicator');
+    const statusText = document.getElementById('status-text');
+    const unloadBtn = document.getElementById('unload-btn');
+
+    if (data.loaded) {
+        indicator.className = 'status-indicator loaded';
+        statusText.textContent = `模型已加载${data.busy ? ' (忙碌中)' : ''}`;
+        unloadBtn.style.display = data.busy ? 'none' : 'inline-block';
+    } else {
+        indicator.className = 'status-indicator unloaded';
+        statusText.textContent = '模型已卸载';
+        unloadBtn.style.display = 'none';
+    }
+}
+
+async function unloadModel() {
+    if (!confirm('确定要卸载模型吗？卸载后将释放内存。')) return;
+
+    try {
+        const response = await fetch('/api/v1/model/unload', { method: 'POST' });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || '卸载失败');
+        }
+        showToast('模型已卸载', 'success');
+        loadModelStatus();
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
 async function loadVoices() {
     try {
         const response = await fetch('/api/v1/voices');
@@ -223,6 +267,7 @@ document.getElementById('synthesize-form').addEventListener('submit', async func
 
         document.getElementById('result-section').style.display = 'block';
         showToast('合成成功', 'success');
+        loadModelStatus();
 
         addToSynthesisHistory(currentSynthesisData);
         audioPlayer.play().catch(() => {});
@@ -418,3 +463,10 @@ document.addEventListener('keydown', function(e) {
 });
 
 loadVoices();
+loadModelStatus();
+
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+        loadModelStatus();
+    }
+});
