@@ -51,11 +51,19 @@ def get_queue_size() -> int:
 def unload_model():
     global _model, _model_loaded
     if _model is not None:
+        # Move model to CPU first to ensure CUDA tensors are detached from context
+        if hasattr(_model, 'to'):
+            _model.to('cpu')
+        # Clear any cached tensors inside the model
+        if hasattr(_model, 'tts_model') and hasattr(_model.tts_model, 'cache'):
+            _model.tts_model.cache = {}
         del _model
         _model = None
         _model_loaded = False
         if torch.cuda.is_available():
+            torch.cuda.synchronize()
             torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
         logger.info("Model unloaded from memory")
     return not _model_loaded
 
