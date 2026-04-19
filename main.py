@@ -1,3 +1,5 @@
+import os
+import sys
 import uuid
 import json
 
@@ -151,6 +153,14 @@ def model_unload():
     if queue_size > 0:
         raise HTTPException(status_code=409, detail=f"Queue has {queue_size} pending tasks")
     unloaded = unload_model()
+    # Restart the process in background to fully reclaim GPU memory after returning response
+    if unloaded:
+        import threading
+        def _restart():
+            import time
+            time.sleep(0.5)
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        threading.Thread(target=_restart, daemon=True).start()
     return {"unloaded": unloaded}
 
 
