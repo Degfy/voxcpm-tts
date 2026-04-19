@@ -1,6 +1,7 @@
 # Chinese TTS Service
 
 基于 [VoxCPM2](https://github.com/OpenBMB/VoxCPM) 的中文语音合成服务，支持 30 种语言和语音克隆。
+![alt text](image.png)
 
 ## 特性
 
@@ -163,6 +164,14 @@ QUEUE_SIZE=10
 HOST=0.0.0.0
 PORT=8000
 ```
+
+## 下载模型
+
+```bash
+uv run download.py
+```
+
+模型将下载到配置文件中指定的 `MODEL_PATH` 目录。
 
 ## 音色存储
 
