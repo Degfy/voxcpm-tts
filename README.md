@@ -113,7 +113,7 @@ curl -X POST http://localhost:8000/api/v1/voices \
 
 ### POST /api/v1/synthesize
 
-合成语音并返回 WAV 音频文件。
+合成语音并返回音频文件。
 
 **请求字段说明：**
 
@@ -125,11 +125,13 @@ curl -X POST http://localhost:8000/api/v1/voices \
 | `speed` | float | 否 | 语速控制（暂未实现）|
 | `cfg_value` | float | 否 | CFG 引导强度，范围 0.0-3.0，默认为 1.0 |
 | `inference_timesteps` | int | 否 | 推理步数，值越大质量越高但速度越慢，默认为 20 |
+| `output_format` | string | 否 | 输出格式，`wav`（默认）或 `mp3` |
 
-**响应：** WAV 音频文件（`audio/wav`）
+**响应：** 音频文件（默认 `audio/wav`，可通过 `output_format` 指定为 `audio/mpeg`）
 
 **示例：**
 ```bash
+# 返回 WAV（默认）
 curl -X POST http://localhost:8000/api/v1/synthesize \
   -H "Content-Type: application/json" \
   -d '{
@@ -139,6 +141,16 @@ curl -X POST http://localhost:8000/api/v1/synthesize \
     "inference_timesteps": 20
   }' \
   -o synthesized.wav
+
+# 返回 MP3
+curl -X POST http://localhost:8000/api/v1/synthesize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "今天天气真好",
+    "voice_id": "a1b2c3d4",
+    "output_format": "mp3"
+  }' \
+  -o synthesized.mp3
 ```
 
 ### GET /health

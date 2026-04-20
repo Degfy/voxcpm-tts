@@ -7,6 +7,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pathlib import Path
 
+from io import BytesIO
+import soundfile as sf
+from pydub import AudioSegment
+
 from voice import (
     Voice,
     get_ref_audio,
@@ -46,6 +50,7 @@ class SynthesizeRequest(BaseModel):
     speed: float | None = None
     cfg_value: float | None = 1.0
     inference_timesteps: int | None = 20
+    output_format: str = "wav"
 
 
 @app.get("/api/v1/voices")
@@ -118,6 +123,24 @@ def synthesize_speech(request: SynthesizeRequest):
             cfg_value=request.cfg_value,
             inference_timesteps=request.inference_timesteps,
         )
+
+        if request.output_format == "mp3":
+            wav_data = sf.read(audio_file, dtype="float32")
+            audio_segment = AudioSegment(
+                data=wav_data[0].tobytes(),
+                sample_width=2,
+                frame_rate=wav_data[1],
+                channels=1,
+            )
+            mp3_buffer = BytesIO()
+            audio_segment.export(mp3_buffer, format="mp3", bitrate="192k")
+            mp3_buffer.seek(0)
+
+            return StreamingResponse(
+                mp3_buffer,
+                media_type="audio/mpeg",
+                headers={"Content-Disposition": "attachment; filename=synthesized.mp3"},
+            )
 
         return StreamingResponse(
             audio_file,
