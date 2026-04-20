@@ -202,6 +202,7 @@ def generate(
     control: str = None,
     cfg_value: float = 2.0,
     inference_timesteps: int = 10,
+    output_format: str = "wav",
 ) -> BytesIO:
     queue = get_generate_queue()
     result_holder = [None]
@@ -210,7 +211,7 @@ def generate(
 
     def do_generate():
         try:
-            result_holder[0] = _do_generate(text, voice_id, control, cfg_value, inference_timesteps)
+            result_holder[0] = _do_generate(text, voice_id, control, cfg_value, inference_timesteps, output_format=output_format)
         except Exception as e:
             exception_holder[0] = e
 
@@ -235,7 +236,13 @@ def _do_generate(
     control: str = None,
     cfg_value: float = 2.0,
     inference_timesteps: int = 10,
+    output_format: str = "wav",
 ) -> BytesIO:
+    fmt = output_format.lower()
+    supported = {"WAV", "MP3", "FLAC", "OGG", "M4A"}
+    if fmt.upper() not in supported:
+        raise ValueError(f"Unsupported output format: {fmt}. Supported: {', '.join(sorted(supported))}")
+
     model = get_model()
     text = text.strip()
     control = control.strip() if control else None
@@ -273,8 +280,7 @@ def _do_generate(
             inference_timesteps=inference_timesteps,
         )
 
-    file = BytesIO()
-    sf.write(file, wav, model.tts_model.sample_rate, format="WAV")
-    file.seek(0)
-
-    return file
+    out = BytesIO()
+    sf.write(out, wav, model.tts_model.sample_rate, format=fmt.upper())
+    out.seek(0)
+    return out

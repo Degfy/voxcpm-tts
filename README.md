@@ -9,6 +9,7 @@
 - **语音克隆**：通过参考音频实现音色克隆
 - **高保真输出**：48kHz 音频输出
 - **队列机制**：支持并发请求，自动排队处理
+- **多格式输出**：支持 WAV、MP3、FLAC、OGG、M4A 等多种音频格式
 - **风格控制**：通过 `control` 参数控制合成风格
 
 ## 快速开始
@@ -35,8 +36,6 @@ uv run main.py
 | POST | `/api/v1/voices` | 添加音色 |
 | DELETE | `/api/v1/voices/:id` | 删除音色 |
 | POST | `/api/v1/synthesize` | 合成语音 |
-| GET | `/api/v1/model/status` | 获取模型状态 |
-| POST | `/api/v1/model/unload` | 卸载模型释放内存 |
 | GET | `/health` | 健康检查 |
 
 ### GET /api/v1/voices
@@ -115,7 +114,7 @@ curl -X POST http://localhost:8000/api/v1/voices \
 
 ### POST /api/v1/synthesize
 
-合成语音并返回音频文件。
+合成语音并返回音频文件（支持多种格式）。
 
 **请求字段说明：**
 
@@ -127,13 +126,12 @@ curl -X POST http://localhost:8000/api/v1/voices \
 | `speed` | float | 否 | 语速控制（暂未实现）|
 | `cfg_value` | float | 否 | CFG 引导强度，范围 0.0-3.0，默认为 1.0 |
 | `inference_timesteps` | int | 否 | 推理步数，值越大质量越高但速度越慢，默认为 20 |
-| `output_format` | string | 否 | 输出格式，`wav`（默认）或 `mp3` |
+| `output_format` | string | 否 | 输出格式，支持 `wav`（默认）、`mp3`、`flac`、`ogg`、`m4a` |
 
-**响应：** 音频文件（默认 `audio/wav`，可通过 `output_format` 指定为 `audio/mpeg`）
+**响应：** 音频文件（根据 `output_format` 返回对应的 MIME 类型）
 
 **示例：**
 ```bash
-# 返回 WAV（默认）
 curl -X POST http://localhost:8000/api/v1/synthesize \
   -H "Content-Type: application/json" \
   -d '{
@@ -143,61 +141,6 @@ curl -X POST http://localhost:8000/api/v1/synthesize \
     "inference_timesteps": 20
   }' \
   -o synthesized.wav
-
-# 返回 MP3
-curl -X POST http://localhost:8000/api/v1/synthesize \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "今天天气真好",
-    "voice_id": "a1b2c3d4",
-    "output_format": "mp3"
-  }' \
-  -o synthesized.mp3
-```
-
-### GET /api/v1/model/status
-
-获取模型加载状态和任务队列信息。
-
-**响应字段说明：**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `loaded` | bool | 模型是否已加载到内存 |
-| `busy` | bool | 是否有任务正在执行 |
-| `queue_size` | int | 队列中待处理的任务数量 |
-
-**响应：**
-```json
-{
-  "loaded": true,
-  "busy": false,
-  "queue_size": 0
-}
-```
-
-### POST /api/v1/model/unload
-
-卸载模型释放内存。模型忙碌时（正在合成）无法卸载。
-
-**响应字段说明：**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `unloaded` | bool | 是否成功卸载 |
-
-**响应：**
-```json
-{
-  "unloaded": true
-}
-```
-
-**错误响应（409 冲突）：**
-```json
-{
-  "detail": "Worker is busy, cannot unload model"
-}
 ```
 
 ### GET /health
@@ -222,20 +165,7 @@ BASE_URL=http://localhost:8000
 QUEUE_SIZE=10
 HOST=0.0.0.0
 PORT=8000
-LOAD_DENOISER=true
 ```
-
-**配置项说明：**
-
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| `MODEL_PATH` | pretrained_models/VoxCPM2 | 模型文件路径 |
-| `VOICES_DIR` | voices | 音色存储目录 |
-| `BASE_URL` | http://localhost:8000 | 服务基础URL |
-| `QUEUE_SIZE` | 10 | 合成任务队列大小 |
-| `HOST` | 0.0.0.0 | 服务监听地址 |
-| `PORT` | 8000 | 服务监听端口 |
-| `LOAD_DENOISER` | true | 是否加载语音降噪器 |
 
 ## 下载模型
 

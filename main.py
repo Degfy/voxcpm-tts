@@ -128,30 +128,25 @@ def synthesize_speech(request: SynthesizeRequest):
             control=request.control,
             cfg_value=request.cfg_value,
             inference_timesteps=request.inference_timesteps,
+            output_format=request.output_format,
         )
 
-        if request.output_format == "mp3":
-            wav_data = sf.read(audio_file, dtype="float32")
-            audio_segment = AudioSegment(
-                data=wav_data[0].tobytes(),
-                sample_width=2,
-                frame_rate=wav_data[1],
-                channels=1,
-            )
-            mp3_buffer = BytesIO()
-            audio_segment.export(mp3_buffer, format="mp3", bitrate="192k")
-            mp3_buffer.seek(0)
-
-            return StreamingResponse(
-                mp3_buffer,
-                media_type="audio/mpeg",
-                headers={"Content-Disposition": "attachment; filename=synthesized.mp3"},
-            )
+        format = request.output_format.lower()
+        mime_map = {
+            "wav": "audio/wav",
+            "mp3": "audio/mpeg",
+            "flac": "audio/flac",
+            "ogg": "audio/ogg",
+            "m4a": "audio/mp4",
+        }
+        media_type = mime_map.get(format, "audio/wav")
 
         return StreamingResponse(
             audio_file,
-            media_type="audio/wav",
-            headers={"Content-Disposition": "attachment; filename=synthesized.wav"},
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"attachment; filename=synthesized.{format}"
+            },
         )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

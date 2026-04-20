@@ -228,7 +228,8 @@ document.getElementById('synthesize-form').addEventListener('submit', async func
         voice_id: document.getElementById('voice-select').value,
         control: document.getElementById('control').value || null,
         cfg_value: parseFloat(document.getElementById('cfg_value').value) || 1.0,
-        inference_timesteps: parseInt(document.getElementById('inference_timesteps').value) || 20
+        inference_timesteps: parseInt(document.getElementById('inference_timesteps').value) || 20,
+        output_format: document.getElementById('output_format').value || 'wav'
     };
 
     if (!data.text.trim()) {
@@ -262,6 +263,7 @@ document.getElementById('synthesize-form').addEventListener('submit', async func
             audioUrl: audioUrl,
             voice_id: data.voice_id,
             control: data.control,
+            output_format: data.output_format,
             createdAt: new Date().toISOString()
         };
 
@@ -292,7 +294,7 @@ function downloadAudio() {
 
     const link = document.createElement('a');
     link.href = URL.createObjectURL(synthesizedAudio);
-    link.download = 'synthesized.wav';
+    link.download = `synthesized.${data.output_format}`;
     link.click();
 }
 
@@ -346,7 +348,7 @@ function downloadSynthesis(index) {
 
     const link = document.createElement('a');
     link.href = item.audioUrl;
-    link.download = `synthesized_${Date.now()}.wav`;
+    link.download = `synthesized_${Date.now()}.${item.output_format || 'wav'}`;
     link.click();
 }
 
