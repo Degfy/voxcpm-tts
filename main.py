@@ -121,6 +121,7 @@ def remove_voice(voice_id: str):
 
 @app.post("/api/v1/synthesize")
 def synthesize_speech(request: SynthesizeRequest):
+    print(f"Generating speech: voice_id={request.voice_id}, control={request.control}, text_len={len(request.text)}, output_format = {request.output_format}")
     try:
         audio_file = generate(
             text=request.text,
